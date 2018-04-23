@@ -1,0 +1,1066 @@
+---
+title: "`r icon::fa_eye()` `r icon::fa_eye()` <br> Myth busting and apophenia in data visualisation: is what you see really there?"
+author: "Di Cook <br><br> Monash University"
+date: "[bit.ly/ihaka-cook](bit.ly/ihaka-cook)  <br><br>  Mar 7, 2018"
+output:
+  xaringan::moon_reader:
+    css: ["default", "myremark.css"]
+    self_contained: false
+    nature:
+      highlightStyle: github
+      highlightLines: true
+      countIncrementalSlides: false
+---
+
+```{r initial, echo = FALSE, cache = FALSE, warning = FALSE, message = FALSE, error=FALSE, results = 'hide'}
+library(knitr)
+options(htmltools.dir.version = FALSE, tibble.width = 60)
+opts_chunk$set(
+  echo = FALSE, warning = FALSE, message = FALSE, error=FALSE, comment = "#>",
+  fig.path = 'figure/', cache.path = 'cache/', fig.align = 'center', 
+  fig.width = 12, fig.height = 11, fig.show = 'hold', 
+  cache = TRUE, external = TRUE, dev = 'svglite'
+)
+library(tidyverse)
+library(ochRe)
+```
+
+
+class: middle center
+# My data stories
+
+What I have learned about the world by making pictures of data.
+
+---
+class: middle center
+
+*Boys are better at math than girls*
+
+e.g. [CNN, October 12, 2016](https://edition.cnn.com/2016/10/12/health/female-scientists-engineers-math-gender-gap/index.html)
+
+---
+# Data: OECD PISA
+
+- OECD PISA survey is the world's global metric for quality, equity and efficiency in school education.
+- Workforce readiness of 15-year old students
+- 4520 students tested in New Zealand in 2015
+- 183 schools
+- Math, reading and science tests, surveys on school and home environment, 921 variables
+- Data available from [http://www.oecd.org/pisa/data/](http://www.oecd.org/pisa/data/)
+
+```{r sqlite, eval=FALSE}
+library(sqldf)
+library(DBI)
+db <- dbConnect(SQLite(), dbname="data/PISA.sqlite")
+#dbWriteTable(conn=db, name="student", value=pisa_2015)
+#dbListFields(db, "student")
+
+library(tidyverse)
+library(dbplyr)
+tb <- tbl(db, "student")
+CNT_count <- tb %>% count(CNT, sort=TRUE) %>% collect()
+# tb %>% filter(CNT == "NZL") %>% count(CNTSCHID) %>% collect()
+```
+
+
+---
+
+```{r eval=FALSE}
+library(ISOcodes)
+data("ISO_3166_1")
+# Codes are not standard
+CNT_count <- CNT_count %>% 
+  mutate(CNT=recode(CNT, "QES"="ESP", "QCH"="CHN", "QAR"="ARG", "TAP"="TWN")) %>%
+  group_by(CNT) %>% summarise(n=sum(n)) %>%
+  filter(CNT != "QUC") %>%
+  filter(CNT != "QUD") %>%
+  filter(CNT != "QUE")
+countries <- CNT_count %>%
+  left_join(ISO_3166_1, by=c("CNT"="Alpha_3"))
+countries$Name[countries$CNT == "KSV"] <- "Kosovo"
+
+scores <- tb %>% 
+  select(CNT, ST004D01T, PV1MATH, PV1READ, PV1SCIE, SENWT) %>% collect()
+nzl <- scores %>% filter(CNT == "NZL")
+save(nzl, file="data/nzl.rda")
+scores <- scores %>% 
+  mutate(CNT=recode(CNT, "QES"="ESP", "QCH"="CHN", "QAR"="ARG", "TAP"="TWN")) %>%
+  filter(CNT != "QUC") %>%
+  filter(CNT != "QUD") %>%
+  filter(CNT != "QUE")
+countries <- scores %>%
+  left_join(ISO_3166_1[,c("Alpha_3", "Name")], by=c("CNT"="Alpha_3"))
+countries$Name[countries$CNT == "KSV"] <- "Kosovo"
+countries <- countries %>% 
+  mutate(ST004D01T=factor(ST004D01T, levels=c(1,2), labels=c("female","male")))
+score_gap <- countries %>% 
+  group_by(Name) %>%
+  summarise(wmathgap=weighted.mean(PV1MATH[ST004D01T=="male"],
+                       w=SENWT[ST004D01T=="male"], na.rm=T)-
+                     weighted.mean(PV1MATH[ST004D01T=="female"],
+                       w=SENWT[ST004D01T=="female"], na.rm=T),
+            wreadgap=weighted.mean(PV1READ[ST004D01T=="male"],
+                       w=SENWT[ST004D01T=="male"], na.rm=T)-
+                     weighted.mean(PV1READ[ST004D01T=="female"],
+                       w=SENWT[ST004D01T=="female"], na.rm=T),
+            wsciegap=weighted.mean(PV1SCIE[ST004D01T=="male"],
+                       w=SENWT[ST004D01T=="male"], na.rm=T)-
+                     weighted.mean(PV1SCIE[ST004D01T=="female"],
+                       w=SENWT[ST004D01T=="female"], na.rm=T))
+save(score_gap, file="data/score_gap.rda")
+
+scores_sumry_math <- countries %>% 
+  group_by(Name, ST004D01T) %>%
+  summarise(min=min(PV1MATH, na.rm=T), 
+            max=max(PV1MATH, na.rm=T),
+            m=weighted.mean(PV1MATH, w=SENWT, na.rm=T)) %>%
+  ungroup() %>%
+  mutate(Name = fct_reorder(Name, m)) %>%
+  mutate(Name = recode(Name, "Czechia"="Czech Republic",
+                       "Korea, Republic of"="South Korea",
+                       "Macedonia, Republic of"="Macedonia",
+                       "Moldova, Republic of"="Moldova",
+                       "Russian Federation"="Russia",
+                       "Taiwan, Province of China"="Taiwan",
+                       "Trinidad and Tobago"="Trinidad",
+                       "United States"="USA",
+                       "United Kingdom"="UK",
+                       "Viet Nam"="Vietnam"))
+save(scores_sumry_math, file="data/scores_sumry_math.rda")
+scores_sumry_read <- countries %>% 
+  group_by(Name, ST004D01T) %>%
+  summarise(min=min(PV1READ, na.rm=T), 
+            max=max(PV1READ, na.rm=T),
+            m=weighted.mean(PV1READ, w=SENWT, na.rm=T)) %>%
+  ungroup() %>%
+  mutate(Name = fct_reorder(Name, m)) %>%
+  mutate(Name = recode(Name, "Czechia"="Czech Republic",
+                       "Korea, Republic of"="South Korea",
+                       "Macedonia, Republic of"="Macedonia",
+                       "Moldova, Republic of"="Moldova",
+                       "Russian Federation"="Russia",
+                       "Taiwan, Province of China"="Taiwan",
+                       "Trinidad and Tobago"="Trinidad",
+                       "United States"="USA",
+                       "United Kingdom"="UK",
+                       "Viet Nam"="Vietnam"))
+save(scores_sumry_read, file="data/scores_sumry_read.rda")
+```
+
+```{r dotplot, fig.height=4, fig.width=5}
+library(ggthemes)
+load("data/scores_sumry_math.rda")
+ggplot(data=scores_sumry_math, aes(x=Name, y=m, 
+                        colour=ST004D01T)) +
+  geom_point(alpha=0.7, size=1) + coord_flip() + 
+  scale_colour_brewer("Gender", palette="Dark2") +
+  xlab("") + ylab("Average math score") + 
+  theme(axis.text.x=element_text(size = 6),
+        axis.text.y=element_text(size = 4), 
+        axis.title.y=element_text(size = 5))
+```
+
+---
+
+```{r fig.height=5, fig.width=8}
+load("data/score_gap.rda")
+world_map <- map_data("world")
+score_gap <- score_gap %>%
+  mutate(Name = recode(Name, "Czechia"="Czech Republic",
+                       "Korea, Republic of"="South Korea",
+                       "Macedonia, Republic of"="Macedonia",
+                       "Moldova, Republic of"="Moldova",
+                       "Russian Federation"="Russia",
+                       "Taiwan, Province of China"="Taiwan",
+                       "Trinidad and Tobago"="Trinidad",
+                       "United States"="USA",
+                       "United Kingdom"="UK",
+                       "Viet Nam"="Vietnam"))
+world_map$region[world_map$subregion == "Hong Kong"] <- "Hong Kong"
+world_map$region[world_map$subregion == "Macao"] <- "Macao"
+to_map <- left_join(world_map, score_gap, by=c("region"="Name"))
+ggplot(to_map, aes(map_id = region)) + 
+    geom_map(aes(fill=wmathgap), map = world_map, 
+             color="grey70", size=0.1) + 
+    scale_fill_gradient2("Math gap", limits=c(-35, 35), na.value="white",
+                         low="#1B9E77", high="#D95F02", mid="grey90") +
+    expand_limits(x = world_map$long, y = world_map$lat) +
+    theme_map() +
+    theme(legend.position = "bottom",
+          legend.key.width=unit(1.5, "cm"), 
+         axis.ticks = element_blank(), 
+         axis.title = element_blank(), 
+         axis.text =  element_blank()) 
+```
+
+---
+class: middle center
+
+There are many countries in the world where girls do better on average than boys.
+
+---
+class: middle center
+
+On the other hand.....
+
+---
+
+```{r fig.height=4, fig.width=5}
+load("data/scores_sumry_read.rda")
+ggplot(data=scores_sumry_read, aes(x=Name, y=m, 
+                        colour=ST004D01T)) +
+  geom_point(alpha=0.7, size=1) + coord_flip() + 
+  scale_colour_brewer("Gender", palette="Dark2") +
+  xlab("") + ylab("Average reading score") + 
+  theme(axis.text.x=element_text(size = 6),
+        axis.text.y=element_text(size = 4), 
+        axis.title.y=element_text(size = 5))
+```
+
+---
+
+```{r fig.height=5, fig.width=8}
+ggplot(to_map, aes(map_id = region)) + 
+    geom_map(aes(fill=wreadgap), map = world_map, 
+             color="grey70", size=0.1) + 
+    scale_fill_gradient2("Math gap", limits=c(-35, 35), na.value="white",
+                         low="#1B9E77", high="#D95F02", mid="grey90") +
+    expand_limits(x = world_map$long, y = world_map$lat) +
+    theme_map() +
+    theme(legend.position = "bottom",
+          legend.key.width=unit(1.5, "cm"), 
+         axis.ticks = element_blank(), 
+         axis.title = element_blank(), 
+         axis.text =  element_blank()) 
+```
+
+---
+class: middle center
+
+And from individual to individual, just looking at New Zealand...
+
+---
+
+```{r fig.width=8, fig.height=5}
+load("data/nzl.rda")
+ggplot(nzl %>% gather(subject, score, PV1MATH:PV1SCIE), aes(x=factor(ST004D01T), y=score, fill=factor(ST004D01T))) + geom_boxplot() +
+  scale_fill_brewer("Gender", palette="Dark2") +
+  facet_wrap(~subject, ncol=3) + 
+  theme(legend.position="none") +
+  xlab("Gender")
+```
+
+---
+class: middle center
+
+From my perspective there is no difference between girls and boys on anything. The differences are overblown. 
+
+---
+# Carbon capture
+
+[New technology offers hope for storing carbon dioxide underground](https://theconversation.com/new-technology-offers-hope-for-storing-carbon-dioxide-underground-60707)
+
+---
+# Data: CO2
+
+- Data is collected at a number of locations world wide. 
+- See [Scripps Inst. of Oceanography](http://scrippsco2.ucsd.edu/data/atmospheric_co2) 
+- Let's pull the data from the web and take a look ...
+- 
+- Recordings from South Pole (SPO), Kermadec Islands (KER), La Jolla Pier, California (LJO), Point Barrow, Alaska (PTB).
+
+---
+
+```{r echo=FALSE, eval=FALSE}
+CO2.ptb<-read.table("http://scrippsco2.ucsd.edu/sites/default/files/data/flask_co2_and_isotopic/daily_co2/fldav_ptb.csv", sep=",", skip=69)
+colnames(CO2.ptb)<-c("date", "time", "day", "decdate", "n", "flg", "co2")
+CO2.ptb$lat<-71.3
+CO2.ptb$lon<-(-156.6)
+CO2.ptb$stn<-"ptb"
+
+CO2.ljo<-read.table("http://scrippsco2.ucsd.edu/sites/default/files/data/flask_co2_and_isotopic/daily_co2/fldav_ljo.csv", sep=",", skip=69)
+colnames(CO2.ljo)<-c("date", "time", "day", "decdate", "n", "flg", "co2")
+CO2.ljo$lat<-32.9
+CO2.ljo$lon<-(-117.3)
+CO2.ljo$stn<-"ljo"
+
+CO2.spo<-read.table("http://scrippsco2.ucsd.edu/sites/default/files/data/flask_co2_and_isotopic/daily_co2/fldav_spo.csv", sep=",", skip=69)
+colnames(CO2.spo)<-c("date", "time", "day", "decdate", "n", "flg", "co2")
+CO2.spo$lat<- (-90.0)
+CO2.spo$lon<-0
+CO2.spo$stn<-"spo"
+
+CO2.ker<-read.table("http://scrippsco2.ucsd.edu/sites/default/files/data/flask_co2_and_isotopic/daily_co2/fldav_ker.csv", sep=",", skip=69)
+colnames(CO2.ker)<-c("date", "time", "day", "decdate", "n", "flg", "co2")
+CO2.ker$lat<-(-29.2)
+CO2.ker$lon<-(-177.9)
+CO2.ker$stn<-"ker"
+
+CO2.all<-rbind(CO2.ker,CO2.ljo,CO2.ptb,CO2.spo)
+CO2.all$date<-as.Date(CO2.all$date)
+
+CO2.all$invlat=-1*CO2.all$lat
+CO2.all$stn=reorder(CO2.all$stn,CO2.all$invlat)
+
+CO2.all.loc <- rbind(CO2.ker[1,],CO2.ljo[1,],CO2.ptb[1,],CO2.spo[1,])
+save(CO2.all, file="data/CO2.rda")
+```
+
+```{r echo=FALSE, warning=FALSE, error=FALSE, message=FALSE, fig.margin = TRUE, fig.height=6, fig.width=7}
+library(tidyverse)
+library(ochRe)
+load("data/CO2.rda")
+ggplot(data=filter(CO2.all, flg < 2), aes(x=date, y=co2, colour=stn)) + 
+  geom_line() + xlab("Year") + ylab("CO2 (ppm)") +
+  scale_colour_manual(values=ochre_palettes$lorikeet[c(6,4,3,2)]) + 
+  theme(axis.text.y=element_text(size = 10)) + 
+  facet_wrap(~stn, ncol=1) + 
+  theme(legend.position = "none")#, 
+        #axis.text.x=element_text(size = 4),
+        #axis.text.y=element_text(size = 3), 
+        #axis.title.y=element_text(size = 4), 
+        #strip.text=element_text(size=3), 
+        #strip.background=element_rect(size=3)) 
+```
+
+---
+class: middle center
+
+We have not made a dent in reducing CO2 in the atmosphere. To the contrary its just increasing. 
+
+Interestingly, the concentrations are seasonal in the northern hemisphere, but not in the southern. 
+
+---
+# More
+
+- Political pollsters are in large part biased
+- You are not over the hill in tennis at 40 - over 40 year old women (and men) regularly win grand slam singles matches
+- If you are flying from small airports in the US, don't be late - more than half of flights leave early
+
+---
+class: middle center
+
+I've learned these things by making plots of data. 
+
+Its not from statistical hypothesis testing. 
+
+Statistical inference provides support for findings, or negates a hypothesis. Its an important tool.
+
+---
+class: middle center
+
+We probably agree with the plots that I have shown you, that there is no argument, the patterns are too strong to have occurred by chance. That's the basis of inference. 
+
+The evidence may be so strong in the plots shown that I don't need additional support from p-values or confidence bands.
+
+---
+# What about this one?
+
+```{r fig.width=10, fig.height=6}
+load("data/wasps.rda")
+wasps <- wasps %>% dplyr::select(-ID)
+library(MASS)
+library(ochRe)
+wasps_lda <- as_tibble(predict(lda(Group~., data=wasps), dimen=2)$x)
+wasps_lda <- bind_cols(wasps, wasps_lda)
+ggplot(wasps_lda, aes(x=LD1, y=LD2, colour=Group)) +
+  geom_point(size=3) + 
+  scale_colour_manual(values=ochre_palettes$lorikeet[c(2,6,3,4)]) + 
+  theme(aspect.ratio=1)
+```
+
+---
+
+.pull-left[# Apophenia
+
+*Apophenia is the human experience of seeing meaningful patterns or connections in random or meaningless data.*
+
+]
+.pull-right[
+
+![](img/cloud-shapes.jpg)
+
+]
+.footnote[Original image and quote can be found at [here](https://sites.google.com/site/ribboneyes/home/final-exam/apophenia).]
+
+
+---
+
+```{r fig.width=10, fig.height=7}
+wasps_lineup <- NULL
+for (i in 1:11) {
+  x <- wasps
+  x$Group <- sample(x$Group)
+  x_lda <- as_tibble(predict(lda(Group~., data=x), dimen=2)$x)
+  x_lda <- bind_cols(x %>% dplyr::select(Group), x_lda)
+  x_lda$.sample <- i
+  wasps_lineup <- bind_rows(wasps_lineup, x_lda)
+}
+wasps_lda <- wasps_lda %>% dplyr::select(Group, LD1, LD2)
+wasps_lda$.sample <- 12
+wasps_lineup <- bind_rows(wasps_lineup, wasps_lda)
+ggplot(wasps_lineup, aes(x=LD1, y=LD2, colour=Group)) +
+  geom_point() +
+  facet_wrap(~.sample, ncol=4) + 
+  scale_colour_manual(values=ochre_palettes$lorikeet[c(2,6,3,4)]) +   
+  theme(legend.position="none")
+```
+
+.footnote[Which plot shows more separation betwen the groups?]
+
+---
+
+.pull-left[
+```{r fig.width=6, fig.height=5}
+ggplot(wasps_lda, aes(x=LD1, y=LD2, colour=Group)) +
+  geom_point(size=3) + 
+  scale_colour_manual(values=ochre_palettes$lorikeet[c(2,6,3,4)]) + 
+  theme(aspect.ratio=1)
+```
+]
+.pull-right[
+
+Null plots were generated by randomly sampling the group label, and re-doing the dimension reduction.
+
+This shows that what was perceived to be big separation in the original data, was not real separation. In high dimensions (42), four randomly assigned groups in 50 observations can be easily separated. 
+]
+
+---
+class: middle center
+
+What we have just used is the **lineup protocol**, which can be used to do significance testing with data plot.
+
+It can also possible to compute p-values and power related to a hypothesis test conducted this way.
+
+---
+
+background-image: url(img/hyptesting.pdf)
+background-size: 90%
+
+
+---
+class: center middle
+
+# Interesting tidbit
+
+The first lineup was done by Neyman, Scott and Shane (1953) to examine the universe .orange["If one actually distributed the cluster centres in space and then
+placed the galaxies in the clusters exactly as prescribed by the
+model, would the resulting picture on the photographic plate look
+anything like that on an actual plate...?"]
+
+.footnote[The hard work was of course done by .orange[Computers], consisting of an office with three female assistants whose work was acknowledged as requiring a tremendous amount of care and attention.]
+
+---
+class: middle center
+
+How does this tie in to Hadley Wickham's work, the tidyverse, and to statistics?
+
+---
+class: middle center
+
+background-image: url(img/messy_to_tidy1.png)
+background-size: 100%
+
+.footnote[Example from Hadley Wickham's workshops]
+---
+
+class: middle center
+
+background-image: url(img/messy_to_tidy2.png)
+background-size: 100%
+
+---
+
+class: middle center
+
+background-image: url(img/messy_to_tidy3.png)
+background-size: 100%
+
+---
+# A statistic is a function of the data
+
+For example, the sample mean,
+
+$$\bar{X}=\frac{1}{n}\sum_{i=1}^{n} X_i$$ 
+
+and standard deviation,
+
+$$s_{X}=\sqrt{\frac{1}{n-1}\sum_{i=1}^{n}(X_i-\bar{X})^2}$$
+
+---
+class: middle center
+
+# This is what I really like about ggplot2, it makes plots another type of statistic.
+
+---
+
+
+```{r}
+messy_data <- read_csv("data/tb.csv")
+tidy_data <- messy_data %>% 
+  gather(demo, count, -year, -iso2, na.rm = TRUE) %>% 
+  separate(demo, c("gender", "age"))
+tidy_data <- tidy_data %>% 
+  filter(!(age %in% c("014", "04", "514", "u")))
+```
+
+```{r fig.width=10, fig.height=4, echo=TRUE}
+tidy_data %>% 
+  filter(iso2 == "NZ") %>% 
+  ggplot(aes(x = year, y = count, fill = gender)) +
+  geom_bar(stat = "identity", position = "fill") +
+  facet_grid(~ age) +
+  scale_fill_manual("",
+                    values=c(ochre_palettes$lorikeet[1],
+                            ochre_palettes$lorikeet[2])) 
+```
+
+---
+
+```{r fig.width=10, fig.height=4, echo=TRUE}
+tidy_data %>% 
+  filter(iso2 == "NZ") %>% 
+  ggplot(aes(x = year, y = count, fill = gender)) +
+  geom_bar(stat = "identity") +
+  facet_grid(~ age) +
+  scale_fill_manual("", 
+                    values=c(ochre_palettes$lorikeet[1],
+                            ochre_palettes$lorikeet[2])) 
+```
+
+---
+
+```{r fig.width=10, fig.height=4, echo=TRUE}
+tidy_data %>% 
+  filter(iso2 == "NZ") %>% 
+  ggplot(aes(x = year, y = count, fill = gender)) +
+  geom_bar(stat = "identity", position="dodge") +
+  facet_grid(~ age) +
+  scale_fill_manual("", 
+                    values=c(ochre_palettes$lorikeet[1],
+                            ochre_palettes$lorikeet[2])) 
+```
+
+---
+
+```{r fig.width=10, fig.height=4, echo=TRUE}
+tidy_data %>% 
+  filter(iso2 == "NZ") %>% 
+  ggplot(aes(x = year, y = count, fill = gender)) +
+  geom_bar(stat = "identity") +
+  facet_grid(gender ~ age) +
+  scale_fill_manual("",
+                  values=c(ochre_palettes$lorikeet[1],
+                          ochre_palettes$lorikeet[2])) 
+```
+
+---
+
+```{r fig.width=10, fig.height=4, echo=TRUE}
+tidy_data %>% 
+  filter(iso2 == "NZ") %>% 
+  ggplot(aes(x = year, y = count, fill = gender)) +
+  geom_bar(stat = "identity") +
+  facet_grid(gender ~ age) +
+  scale_fill_manual("",
+                values=c(ochre_palettes$lorikeet[1],
+                         ochre_palettes$lorikeet[2])) + 
+  coord_polar()
+```
+
+---
+
+```{r fig.width=10, fig.height=4, echo=TRUE}
+tidy_data %>% 
+  filter(iso2 == "NZ") %>% 
+  ggplot(aes(x = year, y = count, fill = gender)) +
+  geom_bar(stat = "identity") +
+  facet_grid(gender ~ age) +
+  scale_fill_manual("", 
+                    values=c(ochre_palettes$lorikeet[1],
+                          ochre_palettes$lorikeet[2])) + 
+  coord_polar()
+```
+
+---
+
+```{r fig.width=10, fig.height=6, echo=TRUE}
+tidy_data %>% 
+  filter(iso2 == "NZ") %>% 
+  ggplot(aes(x = 1, y = count, fill = factor(year))) +
+  geom_bar(stat = "identity", position="fill") +
+  facet_grid(gender ~ age) +
+  scale_fill_ochre("year", palette="lorikeet") +
+  theme(legend.position="bottom") 
+```
+
+---
+
+```{r fig.width=10, fig.height=6, echo=TRUE}
+tidy_data %>% 
+  filter(iso2 == "NZ") %>% 
+  ggplot(aes(x = 1, y = count, fill = factor(year))) +
+  geom_bar(stat = "identity", position="fill") +
+  facet_grid(gender ~ age) +
+  scale_fill_ochre("year", palette="lorikeet") +
+  coord_polar(theta="y") + theme(legend.position="bottom")
+```
+
+---
+
+<img src="https://www.wired.com/wp-content/uploads/2016/01/DB-Transformation-Colour.gif" width="600px" align="middle">
+
+.footnote[Source: https://www.wired.com/wp-content/uploads/2016/01/DB-Transformation-Colour.gif]
+
+---
+class: middle center
+
+# Now we can start doing statistics with plots, actually statistical inference
+
+---
+class: middle center
+
+WHY? A recent apophenia example
+
+---
+
+class: middle center
+
+background-image: url(img/drob_twitter.png)
+background-size: 60%
+
+---
+# Followed by 
+
+*Below is a simple scatterplot of the two variables of interest. A slight negative slope is observed, but it does not look very large. There are a lot of states whose capitals are less than 5% of the total population. The two outliers are Hawaii (government rank 33 and capital population 25%) and Arizona (government rank 26 and capital population 23%). Without those two the downward trend (an improvement in ranking) would be much stronger.*
+
+*I ran linear regressions of government rank on the percentage of each state’s population living in the capital city, state population (in 100,000s), and state GDP (in $100,000s).... The .orange[coefficient is not significant] for any regression at the traditional 5% level.*
+
+*... .orange[I'm not convinced that the lack of significance is itself significant.]*
+
+.footnote[Analysis in Tick Tock blog, by Graham Tierney.]
+
+---
+class: middle center
+
+.medium[Because we make inference with plots anyway, without a firm foundation.]
+
+---
+class: middle center
+
+.medium[Let's do some inference....]
+
+# Which one of the following plots shows the strongest relationship between the two variables?
+
+---
+
+class: middle center
+
+background-image: url(img/govt_lineup.png)
+background-size: 80%
+
+---
+class: middle center
+
+.medium[**Why do we need inference?**]
+
+.footnote[plot number 12]
+
+---
+.left-column[
+# How do you generate null samples?
+]
+.right-column[
+- **Permutation**: Take one of the variables of interest (one columnm of tidy data) and scramble the order. This breaks any association with other variables. 
+- **Simulation**: Assume that a variable has values that follow a given statistical distribution. Sample values from this distribution.
+]
+
+---
+class: middle center
+
+# Putting this all together
+
+---
+
+.left-column[
+# When you make a plot of data
+]
+.right-column[
+# think about...
+- What is the .orange[question] you are trying the answer from the plot, hence explicitly stating the .orange[null hypothesis and alternative]. 
+- How .orange[variables] are mapped to graphical elements.
+- What a .orange[null generating mechanism] could be, that woud ensure samples are drawn from a null scenario, of nothing to be seen.
+- What are possible .orange[alternative plot designs].
+]
+
+---
+
+# Worked examples
+
+- good government
+- cancer map
+- flying etiquette
+
+---
+
+.pull-left[
+<img src="img/drob_twitter.png" width="100%">
+]
+.pull-right[
+- **Question**: Is good government related to population centres?
+    - **Null**: Nope
+    - **Alternative**: Yes
+- Variables mapped to graphical elements
+    - x=%Pop, y=Rank, geom=point
+    - ......., geom=smooth/lm, se
+- Null generating method:
+    - Permute x, resulting in *no real association*
+- Alternatives: 
+    - log the %Pop values
+    - No lm, no se
+]
+
+---
+class: middle center
+
+background-image: url(img/govt_lineup.png)
+background-size: 80%
+
+---
+
+.pull-left[
+```{r}
+library(fiftystater)
+library(tidyverse)
+library(ochRe)
+library(readxl)
+
+incd <- read_xlsx("data/IncRate.xlsx", skip=6, sheet=2) %>%
+  dplyr::filter(!(State %in% c("All U.S. combined", "Kansas"))) %>%
+  dplyr::select(State, `All cancer types combined / Both sexes combined`) %>%
+  dplyr::rename(Incidence=`All cancer types combined / Both sexes combined`) %>%
+  dplyr::mutate(Incidence = as.numeric(substr(Incidence, 1, 5)))
+
+ggplot(incd, aes(map_id = tolower(State))) + 
+  # map points to the fifty_states shape data
+  geom_map(aes(fill = Incidence), map = fifty_states) + 
+  expand_limits(x = fifty_states$long, y = fifty_states$lat) +
+  coord_map() +
+  scale_x_continuous(breaks = NULL) + 
+  scale_y_continuous(breaks = NULL) +
+  labs(x = "", y = "") +
+  #scale_fill_ochre(palette="jumping_frog", discrete=FALSE) + 
+  scale_fill_distiller(palette="YlGn", type="seq", direction=1) +
+  theme(legend.position = "bottom", 
+        panel.background = element_blank())
+```
+Cancer incidence across the US 2010-2014, all cancer types, per 100k.
+
+.footnote[Data from American Cancer Society, https://cancerstatisticscenter.cancer.org]
+]
+.pull-right[
+
+- **Question**: Is there spatial dependency?
+    - Null: Nope
+    - Alternative: Yep
+- Variables mapped to graphical elements
+    - x=long, y=lat, geom=map/polygon
+    - color=Incidence
+- Null generating method:
+    - Permute Incidence, breaks any spatial dependence
+
+]
+
+---
+class: middle center
+
+# Melanoma
+
+a .orange[different cancer] from what we just looked at, because once you've seen the data its .orange[hard to "unsee it"]
+
+---
+
+```{r}
+incd <- read_xlsx("data/IncRate.xlsx", skip=6, sheet=2) %>%
+  dplyr::filter(!(State %in% c("All U.S. combined", "Kansas"))) %>%
+  dplyr::select(State, `Melanoma of the skin / Both sexes combined`) %>%
+  dplyr::rename(Incidence=`Melanoma of the skin / Both sexes combined`) %>%
+  dplyr::mutate(Incidence = as.numeric(substr(Incidence, 1, 3)))
+
+library(nullabor)
+pos=7
+
+incd <- incd %>% mutate(State = tolower(State))
+incd_lineup <- lineup(null_permute('Incidence'), incd, n=9, pos=pos)
+incd_map <- left_join(fifty_states, filter(incd_lineup, .sample==1),
+                      by=c("id"="State"))
+for (i in 2:9) {
+  x <- left_join(fifty_states, filter(incd_lineup, .sample==i),
+                      by=c("id"="State"))
+  incd_map <- bind_rows(incd_map, x)
+}
+incd_map <- incd_map %>% filter(!is.na(.sample))
+ggplot(incd_map) + 
+  geom_polygon(aes(x=long, y=lat, fill = Incidence, group=group)) + 
+  expand_limits(x = incd_map$long, y = incd_map$lat) +
+  coord_map() +
+  scale_x_continuous(breaks = NULL) + 
+  scale_y_continuous(breaks = NULL) +
+  labs(x = "", y = "") +
+  #scale_fill_ochre(palette="jumping_frog", discrete=FALSE) + 
+  scale_fill_distiller(palette="YlGn", type="seq", direction=1) +
+  theme(legend.position = "bottom", 
+        panel.background = element_blank()) +
+  facet_wrap(~.sample, ncol=3)
+```
+
+
+```{r eval=FALSE}
+incd <- read_xlsx("data/IncRate.xlsx", skip=6, sheet=2) %>%
+  filter(!(State %in% c("All U.S. combined", "Kansas"))) %>%
+  select(State, `Leukemia / Both sexes combined`) %>%
+  rename(Incidence=`Leukemia / Both sexes combined`) %>%
+  mutate(Incidence = as.numeric(substr(Incidence, 1, 3)))
+
+library(rgdal)
+library(rgeos)
+library(ggplot2)
+ 
+us <- readOGR("data/us_states_hexgrid.geojson", "OGRGeoJSON")
+centers <- cbind.data.frame(data.frame(gCentroid(us, byid=TRUE), id=us@data$iso3166_2))
+ 
+us_map <- fortify(us, region="iso3166_2")
+
+incd %>% filter(tolower(State) %in% fifty_states$id) -> incd50
+
+pos=2
+incd_lineup <- lineup(null_permute('Incidence'), incd50, n=9, pos=pos)
+
+us@data$`google_name` <- tolower(gsub("\\s*\\([^\\)]+\\)","",us@data$`google_name`))
+
+hexdata <- filter(incd_lineup, .sample==1) %>% #select(State, Incidence) %>%
+  full_join(., us@data, by=c("State"="google_name")) 
+for (i in 2:9) {
+  x <- full_join(filter(incd_lineup, .sample==i),
+                      us@data, by=c("State"="google_name"))
+  hexdata <- bind_rows(hexdata, x)
+}
+hexdata <- hexdata %>% filter(!is.na(.sample))
+
+ggplot() + geom_map(data=us_map, map=us_map,
+                    aes(x=long, y=lat, map_id=id),
+                    color="white", size=0.5) + 
+  geom_map(data=hexdata, map=us_map,
+                    aes(fill=Incidence, map_id=iso3166_2)) +
+  geom_map(data=us@data, map=us_map,
+                    aes(map_id=iso3166_2),
+                    fill="#ffffff", alpha=0, color="white") + #geom_text(data=centers, aes(label=id, x=x, y=y), color="white", size=4) +
+  scale_fill_distiller(palette="YlGn", na.value="#7f7f7f") + coord_map() +
+  labs(x=NULL, y=NULL) + theme_bw() + theme(panel.border=element_blank()) +
+  theme(panel.grid=element_blank()) + theme(axis.text=element_blank()) +
+  facet_wrap(~.sample)
+
+```
+
+---
+class: middle center 
+
+[41% Of Fliers Think You’re Rude If You Recline Your Seat](http://fivethirtyeight.com/datalab/airplane-etiquette-recline-seat/)
+
+FiveThirtyEight article by Walt Hickey, Sep 2014
+
+---
+
+```{r fig.height=10, fig.width=12}
+fly <- read_csv("data/flying-etiquette.csv")
+fly <- fly %>% rename(`how_often`=`How often do you travel by plane?`,
+                      `recline`=`Do you ever recline your seat when you fly?`,
+                      `baby_rude`=`In general, is itrude to bring a baby on a plane?`,
+                      age=Age, gender=Gender)
+fly_sub <- fly %>% filter(`how_often` %in% 
+     c("Once a year or less","Once a month or less")) %>%
+  filter(!is.na(`recline`)) %>%
+  filter(!is.na(`baby_rude`)) %>%
+  filter(!is.na(age)) %>% 
+  filter(!is.na(gender))
+fly_sub$recline <- factor(
+  fly_sub$recline, levels=c(
+    "Never","Once in a while","About half the time",
+    "Usually","Always"))
+fly_sub$age <- factor(fly_sub$age, levels=c("18-29","30-44","45-60","> 60"))
+fly_sub$gender <- as.numeric(factor(fly_sub$gender, levels=c("Male","Female"), labels=c(0,1))) - 1
+
+pos=12
+
+set.seed(12)
+fly_sub_lineup <- lineup(null_dist(var="gender", dist="binomial", 
+                                   params=list(p=0.533, n=809, size=1)), 
+                         fly_sub, pos=pos, n=12)
+fly_sub_lineup$gender <- factor(fly_sub_lineup$gender, 
+                                levels=c(0,1), labels=c("male", "female"))
+ggplot(fly_sub_lineup, 
+       aes(x=`baby_rude`, fill=gender)) + 
+  xlab("Is it rude to bring a baby on board?") +
+  geom_bar(position="fill") + coord_flip() +
+  scale_fill_manual("", 
+                    values=c(ochre_palettes$lorikeet[2],
+                          ochre_palettes$lorikeet[1])) +
+  facet_wrap(~.sample, ncol=4)
+```
+
+
+# p-values 
+
+The *p*-value is the probability that the data plot is extreme, if there really is no structure in the population. **The lower the better!**
+
+```{r echo=TRUE}
+library(nullabor)
+data(turk_results)
+turk_results %>% filter(pic_id == "105") %>% count(detected)
+pvisual(13, 17)
+```
+
+---
+# p-values 
+
+```{r echo=TRUE}
+turk_results %>% filter(pic_id == "116") %>% count(detected)
+pvisual(2, 16)
+```
+
+---
+# Our trial
+
+.pull-left[
+```{r}
+ggplot(fly_sub_lineup, 
+       aes(x=`baby_rude`, fill=gender)) + 
+  xlab("Is it rude to bring a baby on board?") +
+  geom_bar(position="fill") + coord_flip() +
+  scale_fill_manual("", 
+                    values=c(ochre_palettes$lorikeet[2],
+                          ochre_palettes$lorikeet[1])) +
+  facet_wrap(~.sample, ncol=4)
+```
+]
+.pull-right[
+```{r echo=TRUE}
+pvisual(20, 50)
+```
+]
+
+.footnote[run directly in R]
+---
+# ...and power
+
+Power is the probability that the data plot is detected when there really is some structure in the population. **The higher the better!**
+
+```{r echo=TRUE}
+visual_power(turk_results)
+```
+
+---
+
+.pull-left[
+```{r}
+ggplot(fly_sub_lineup, 
+       aes(x=`baby_rude`, fill=gender)) + 
+  xlab("Is it rude to bring a baby on board?") +
+  geom_bar(position="fill") + coord_flip() +
+  scale_fill_manual("", 
+                    values=c(ochre_palettes$lorikeet[2],
+                          ochre_palettes$lorikeet[1])) +
+  facet_wrap(~.sample, ncol=4)
+```
+]
+.pull-right[
+```{r}
+ggplot(fly_sub_lineup, 
+       aes(x=`baby_rude`, fill=gender)) + 
+  xlab("Is it rude to bring a baby on board?") +
+  geom_bar() + coord_flip() +
+  scale_fill_manual("", 
+                    values=c(ochre_palettes$lorikeet[2],
+                          ochre_palettes$lorikeet[1])) +
+  facet_wrap(~.sample, ncol=4) 
+```
+]
+
+Best design to answer this question: "Do males and females perceive the etiquette of bringing a baby on board differently?"
+
+.footnote[Hofmann et al (2012) InfoVis]
+
+---
+
+.pull-left[
+<img src="img/hyptesting2.pdf">
+]
+.pull-right[
+Hypothesis testing provides rigor to data analysis. Its very important to do it rigorously. 
+
+.orange[**The hypothesis for data plots comes from the type of plot being used.**] 
+
+When you add the data to the plot, it becomes a test statistic. Hypotheses never come from looking at the data first, but from the underlying problem to be solved.
+]
+
+---
+# The nullabor package
+
+```{r echo=TRUE, message=TRUE}
+fly_sub_lineup <- lineup(
+  null_dist(var="gender", dist="binomial", 
+             params=list(p=0.533, n=809, size=1)), 
+  fly_sub, n=12)
+```
+
+.footnote[https://github.com/dicook/nullabor]
+
+---
+# Summary
+
+- Tidy data provides the glue from raw data to the data in the statistics textbooks 
+    - it fills that vast chasm that has existed and exasperated for eons.
+    - No longer do statisticians have to request the clean tabular format csv file before they can get started
+    
+---
+# Summary
+    
+- The grammar of graphics provides the functional mapping of variable to plot element that makes data plots become statistics that we can do inference on
+    - Visual inference protocol gives some "teeth" to the discoveries 
+    - ... and helps to avoid apophenia
+    - Prevents *p*-hacking and supports practical significance
+
+---
+# Epilogue
+
+Can the computer beat a human?
+
+[Book 'Em Danno!](http://giorasimchoni.com/2018/02/07/2018-02-07-book-em-danno/) is a blog post explaining a quick analysis examining deep learning as a replacement for a human evaluator. 
+
+.footnote[Not yet!]
+
+---
+
+class: inverse 
+
+# Joint work!
+
+- Inference: Andreas Buja, Heike Hofmann, Mahbub Majumder, Hadley Wickham, Eric Hare, Susan Vanderplas, Niladri Roy Chowdhury, Nat Tomasetti, Debby Swayne, Eun-kyung Lee.
+
+Contact: [`r icon::fa_envelope()`](http://www.dicook.org) dicook@monash.edu, [`r icon::fa_twitter()`](https://twitter.com/visnut) visnut, [`r icon::fa_github()`](https://github.com/dicook) dicook
+
+.footnote[Slides made with Rmarkdown, xaringan package by Yihui Xie, and lorikeet theme using the [ochRe package](https://github.com/ropenscilabs/ochRe). Available at [github.com/dicook/RStudio-keynote](github.com/dicook/Ihaka-talk].)
+
+---
+# Further reading
+
+- Buja et al (2009) Statistical Inference for Exploratory Data Analysis and Model Diagnostics, Roy. Soc. Ph. Tr., A
+- Majumder et al (2013) Validation of Visual Statistical Inference, Applied to Linear Models, JASA
+- Wickham et al (2010) Graphical Inference for Infovis, InfoVis, Best paper
+- Hofmann et al (2012) Graphical Tests for Power Comparison of Competing Design, InfoVis
+    
+---
+class: middle center
+
+<a rel="license" href="http://creativecommons.org/licenses/by-sa/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by-sa/4.0/88x31.png" /></a><br />This work is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by-sa/4.0/">Creative Commons Attribution-ShareAlike 4.0 International License</a>.
+

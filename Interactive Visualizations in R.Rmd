@@ -4,6 +4,52 @@ runtime: shiny
 output: html_document
 ---
 
+```{r echo=TRUE}
+library(shiny)
+library(ggplot2)
+
+setwd("/Volumes/Untitled/Users/Marcus/Dropbox/Skole (Selective Sync Conflict)/NHH/Master/V18/BUS464/BUS464 Vizualization in R/Shiny/Threshold")
+
+  load(file = "logfit.Rdata")
+  
+  output$logfit<- renderPlot({
+    plot.list[[input$models]] + geom_vline(xintercept=input$threshold, linetype = "dashed",
+                                           color = "black")
+  })
+  
+  output$threshold <- renderPlot({
+    confusion.matrix(table(ifelse(as.numeric(threshold.list[[input$models]] > input$threshold), 1, 0), test.data$y),
+                     tit = paste0(input$models, " classification probability threshold ", input$threshold * 100, "%"))
+    
+  })
+
+fluidPage(
+  
+  # Application title
+  titlePanel("Threshold Analysis"),
+  
+  # Sidebar with a slider input for number of bins 
+  sidebarLayout(
+    sidebarPanel(
+      sliderInput("threshold",
+                  "Threshold:",
+                  min = 0.00,
+                  max = 0.50,
+                  value = 0.25),
+      selectInput("models",
+                  "Model",
+                  choices = c("log", "lda", "qda"))
+    ),
+    # Show a plot of the generated distribution
+    mainPanel(
+      plotOutput("logfit"),
+      plotOutput("threshold")
+    )
+  )
+)
+```
+
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```

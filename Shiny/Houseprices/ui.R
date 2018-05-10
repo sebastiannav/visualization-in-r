@@ -5,12 +5,17 @@ library(tidyverse)
 library(forcats)
 library(magrittr)
 
+# Load data
+house <- read_tsv('houseprices_data.txt')
+names(house) <- gsub(" ", "", names(house))
+
 # Get lists of all neighbourhoods and which to exclude by default, for plotting
-all_neighbourhoods <- levels(pull(house, Neighborhood))
+house$Neighborhood = as.factor(house$Neighborhood) # for levels to be pulled, it needs to be formatted as factor
+all_neighbourhoods <- levels(pull(house, 'Neighborhood'))
 exclude_neighbourhoods <- setdiff(levels(house$Neighborhood), c("Blmngtn", "StoneBr", "Mitchel", "OldTown", "NoRidge"))
 
 # Define UI for application
-shinyUI(fluidPage(
+fluidPage(
   # Application title
   titlePanel("Iowa Housing: Sale Price"),
   
@@ -55,4 +60,4 @@ shinyUI(fluidPage(
        br()
     )
   )
-))
+)

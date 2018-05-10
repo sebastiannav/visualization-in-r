@@ -1,6 +1,7 @@
 # Load "necessary" packages
 library(shiny)
 library(DT)
+library(readr)
 
 # Load data
 house <- read_tsv('houseprices_data.txt')
@@ -13,8 +14,8 @@ nas <- house %>%
 
 # Exclude variables missing more than 1500 values (roughly >50% of dataset)
 exclude_nas <- nas %>% select_if(. > 1500) %>% names(.)
-house %<>% select(-one_of(exclude_nas))
-raw %<>% select(-one_of(exclude_nas))
+house %<>% select(-one_of(exclude_nas)) # select_ threw error, replaced with select()
+# raw %<>% select(-one_of(exclude_nas))
 
 # Seems like a false positive garage, where GarageType = 'Detachd' but all other data is missing. Remove that garage.
 house %<>% mutate(GarageType = replace(GarageType, is.na(GarageCars), NA))
@@ -69,8 +70,8 @@ sparse_num <- house %>%
   select_if(. > 0)
 
 # Drop variables with sparsity > 50%, ratio of 'None' for categorical and 0 for numeric
-drop_vars <- c(names(sparse_num %>% select_if(. > 0.5)), names(sparse_cat %>% select_if(. > 0.4)))
-house %<>% select(-one_of(drop_vars))
+# drop_vars <- c(names(sparse_num %>% select_if(. > 0.5)), names(sparse_cat %>% select_if(. > 0.4)))
+# house %<>% select(-one_of(drop_vars))
 
 # Converting ordinal string factors to numbers
 house %<>% mutate(
@@ -169,7 +170,7 @@ vars_numeric <- names(house %>% select_if(is.numeric) %>% select(-SalePrice))
 
 
 # Define server logic required to draw the plots
-shinyServer(function(input, output) {
+function(input, output) {
   output$scatterPlot <- renderPlot({
     ggplot(data = house %>% filter(!(Neighborhood %in% input$neighbourhoods)),
       aes_string(x = input$x, y = "SalePrice")) +
@@ -203,4 +204,5 @@ shinyServer(function(input, output) {
       select(SalePrice, Neighborhood, TotalSF, HouseAge, SaleCondition, GarageCars, GarageAge)
   })
   
-})
+}
+

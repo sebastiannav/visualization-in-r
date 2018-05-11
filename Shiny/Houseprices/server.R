@@ -2,6 +2,7 @@
 library(shiny)
 library(DT)
 library(readr)
+library(dplyr)
 
 # Load data
 house <- read_tsv('houseprices_data.txt')

@@ -11,9 +11,7 @@ author:
 ---
 
 # 1. Introduction
-- We wanted to do Shiny because it might be useful in reporting later in our career
-- Interactive graphics provide more opportunities, can give more information with the same amount of space
-- Provides the possibility to dig deeper into the data
+- Provides the possibility to dig deeper into the data. 
 
 # 2. Housing prices dashboard
 Introduction.
@@ -189,7 +187,7 @@ output$scatterPlot <- renderPlot({
     labs(
       y = "Sale Price ($)"
     )
-}, width = 12)
+})
   
 output$boxPlot <- renderPlot({
   ggplot(data = house %>% filter(!(Neighborhood %in% input$neighbourhoods))) +

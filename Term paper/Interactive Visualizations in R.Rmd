@@ -1,0 +1,119 @@
+---
+title: Interactive visualizations in R
+runtime: shiny
+output: 
+  html_notebook: 
+    theme: journal
+author:
+- name: Sebastian Navdahl,
+- name: Johannes Kolberg Krokeide,
+- name: Benjamin Aanes,
+- name: Marcus Lauritsen
+  affiliation: Norwegian School of Economics
+---
+
+
+
+```{r include=FALSE}
+library(shiny)
+library(ggplot2)
+load(file = "logfit.Rdata")
+```
+
+# 1. Introduction
+- We wanted to do Shiny because it might be useful in reporting later in our career
+- Interactive graphics provide more opportunities, can give more information with the same amount of space
+- etc
+
+# 2. Housing prices dashboard
+Introduction.
+
+## 2.2 Target audience for the dashboard
+
+# 3. A visualization of a machine learning model
+
+```{r echo=TRUE}
+ output$logfit<- renderPlot({
+    plot.list[[input$models]] + geom_vline(xintercept=input$threshold, linetype = "dashed", color = "black")
+  })
+  
+  output$threshold <- renderPlot({
+    confusion.matrix(table(ifelse(as.numeric(threshold.list[[input$models]] > input$threshold), 1, 0), test.data$y),
+                     tit = paste0(input$models, " classification probability threshold ", input$threshold * 100, "%"))
+    
+  })
+
+fluidPage(
+  
+  # Application title
+  # titlePanel("Threshold Analysis"),
+  
+  # Sidebar with a slider input for number of bins 
+  sidebarLayout(
+    sidebarPanel(
+      sliderInput("threshold",
+                  "Threshold:",
+                  min = 0.00,
+                  max = 0.50,
+                  value = 0.25),
+      selectInput("models",
+                  "Model",
+                  choices = c("log", "lda", "qda"))
+    ),
+    # Show a plot of the generated distribution
+    mainPanel(
+      plotOutput("logfit", width = "100%", height = 500),
+      plotOutput("threshold", width = "100%", height = 500), width = 12
+    )
+  )
+)
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+## Inputs and Outputs
+
+You can embed Shiny inputs and outputs in your document. Outputs are automatically updated whenever inputs change.  This demonstrates how a standard R plot can be made interactive by wrapping it in the Shiny `renderPlot` function. The `selectInput` and `sliderInput` functions create the input widgets used to drive the plot.
+
+```{r eruptions, echo=TRUE}
+inputPanel(
+  selectInput("n_breaks", label = "Number of bins:",
+              choices = c(10, 20, 35, 50), selected = 20),
+  
+  sliderInput("bw_adjust", label = "Bandwidth adjustment:",
+              min = 0.2, max = 2, value = 1, step = 0.2)
+)
+
+renderPlot({
+  hist(faithful$eruptions, probability = TRUE, breaks = as.numeric(input$n_breaks),
+       xlab = "Duration (minutes)", main = "Geyser eruption duration")
+  
+  dens <- density(faithful$eruptions, adjust = input$bw_adjust)
+  lines(dens, col = "blue")
+})
+```

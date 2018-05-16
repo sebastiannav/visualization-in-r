@@ -217,7 +217,10 @@ output$houseTable <- DT::renderDataTable({
 
 ## 2.2 Target audience for the dashboard
 
-# 3. A visualization of a machine learning model
+# 3. Threshold analysis in a classification model
+Interactive visualizations can be useful when working with machine learning classifications models. To illustrate this we have used the "Bank Marketing" dataset from the UCI Machine Learning Repository. The data is related to a direct marketing campaign for a Portuguese bank. Our goal is to predict the outcome of a sales call when a sales representative is offering a new product.
+
+A confusion matrix is used to evaluate the model. The matrix shows when the model gives true/false positives and true/false negatives. Depending on the business case, different measures can be used to 
 
 ```{r echo=TRUE, results='hide'}
 library(shiny)

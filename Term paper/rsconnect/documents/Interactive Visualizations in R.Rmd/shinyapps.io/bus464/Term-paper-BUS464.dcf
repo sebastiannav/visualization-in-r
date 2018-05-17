@@ -5,8 +5,8 @@ account: bus464
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 340824
-bundleId: 1367912
+bundleId: 1377960
 url: https://bus464.shinyapps.io/Term-paper-BUS464/
-when: 1526009293.10374
+when: 1526523866.34451
 asMultiple: FALSE
 asStatic: FALSE

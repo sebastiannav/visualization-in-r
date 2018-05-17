@@ -14,7 +14,21 @@ author:
 - Provides the possibility to dig deeper into the data. 
 
 # 2. Housing prices dashboard
-Introduction.
+To illustrate how interactive visualizations can make it easier to dig deeper into the data, we have used the Ames Housing dataset downloaded from the American Statistical Association. The dataset includes data on properties sold in Ames, Iowa.
+
+```{r echo=TRUE}
+# Load ggplot2
+library(ggplot2)
+
+# Load data
+house <- read.csv('houseprices.csv')
+
+ggplot(data = house, aes_string(x = house$GrLivArea, y = house$SalePrice)) +
+  geom_point(aes_string(col = house$Neighborhood)) +
+  geom_smooth(method = "lm", formula = y ~ splines::bs(x, 3), se = F) +
+  labs(x = "Living area (square feet)", y = "Sale Price ($)", col = "Neighborhood")
+```
+
 
 ```{r echo=TRUE, results='hide'}
 library(shiny)

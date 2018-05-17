@@ -220,7 +220,9 @@ output$houseTable <- DT::renderDataTable({
 # 3. Threshold analysis in a classification model
 Interactive visualizations can be useful when working with machine learning classifications models. To illustrate this we have used the "Bank Marketing" dataset from the UCI Machine Learning Repository. The data is related to a direct marketing campaign for a Portuguese bank. Our goal is to predict the outcome of a sales call when a sales representative is offering a new product.
 
-A confusion matrix is used to evaluate the model. The matrix shows when the model gives true/false positives and true/false negatives. Depending on the business case, different measures can be used to 
+A confusion matrix is used to evaluate the model. The matrix shows when the model gives true or false positives and true or false negatives. Depending on the business case, different measures can be used to evaluate the model. The total accuracy, the share of correct predictions, might not be the adequate metric for a model. _Precision_ and _recall_ needs to be taken into account as well. Precision measures share of correct predictions among the predicted successes, while recall measures the correct predictions among the successful outcomes. Looking at the graph, we see that there is a trade-off between the two.
+
+When the probability of belonging to a class reaches a set threshold, it will be classified to that class. Consequently, it is essential to adjust the threshold and see how the metrics changes. 
 
 ```{r echo=TRUE, results='hide'}
 library(shiny)

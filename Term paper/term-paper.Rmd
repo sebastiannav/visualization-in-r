@@ -30,13 +30,13 @@ A dashboard uses interactive visualizations to present data. Only the most impor
 # 2. Packages
 
 ## 2.1 Shiny
-Shiny is a web application framework for R that makes it possible to make interactive web applications. Javascript is used to make the app interactive, CSS is used to format the user interface, and the output is displayed using HTML. As a result, a Shiny app can be run in a web browser and thus easily sharable. Also, it could be embedded in R markdown documents or displayed in RStudio.
+Shiny is a web application framework for R that makes it possible to make interactive web applications. Javascript is used to make the app interactive, CSS is used to format the user interface, and the output is displayed using HTML. As a result, a Shiny app can be run in a web browser and thus easily sharable. Also, it could be embedded in R markdown documents or displayed in RStudio. (Wickham, 2016).
 
-There are two main components: a UI file (user-interface definition file) and a server script file. The UI file is the code used to set up everything the end user sees in the application like the title, sliders, plots and so on. This file is called ui.R. The second main component, the server script file, does the computational work. For example, in our shiny model we use functions like plot(), smooth() and lm(), etc. This is the instructions necessary to buid the app and the file is called server.R. Combined, ui.R and server.R can be called in a Shiny function and displayed in RStudio or a R Markdown document. Alternatively, they could be hosted on the Shiny server and accessed via the Internet.
+There are two main components: a UI file (user-interface definition file) and a server script file. The UI file is the code used to set up everything the end user sees in the application like the title, sliders, plots and so on. This file is called ui.R. The second main component, the server script file, does the computational work. For example, in our shiny model we use functions like plot(), smooth() and lm(), etc. This is the instructions necessary to buid the app and the file is called server.R. Combined, ui.R and server.R can be called in a Shiny function and displayed in RStudio or a R Markdown document. Alternatively, they could be hosted on the Shiny server and accessed via the Internet. (Wickham, 2016).
 
 ## 2.2 ggplot2
 
-The ggplot2 package makes it possible to create powerful and beautiful plots. It is based on the grammar of graphics, which means it follows a set of rules as a graphic language and it lets you create graphs for different types of data: univariate and multivariate, numerical and categorical. Furthermore, the package provides functions that are easy to use: the grouping of the data (group by color, symbol, size, etc.) and the creation of plots. The package creates output layer by layer. This means it is easy to overlay different things on the same plot. When doing exploratory data analysis, one can quick and easy make changes in the visualization such as changing from a bar chart to a line chart. This makes ggplot2 suitable for exploratory data analysis.
+The ggplot2 package makes it possible to create powerful and beautiful plots. It is based on the grammar of graphics, which means it follows a set of rules as a graphic language and it lets you create graphs for different types of data: univariate and multivariate, numerical and categorical. Furthermore, the package provides functions that are easy to use: the grouping of the data (group by color, symbol, size, etc.) and the creation of plots. The package creates output layer by layer. This means it is easy to overlay different things on the same plot. When doing exploratory data analysis, one can quick and easy make changes in the visualization such as changing from a bar chart to a line chart. This makes ggplot2 suitable for exploratory data analysis. (Beeley, 2016).
 
 \pagebreak
 
@@ -263,3 +263,13 @@ function(input, output) {
 ```
 
 ![The threshold dashboard](Threshold_dashboard.png){width=100%}
+
+
+# 5. References
+
+Wickham, H. (2016). ggplot2 – Elgant Graphics for Data Analysis, 2.edition. Springer International
+URL:https://books.google.no/books?hl=en&lr=&id=XgFkDAAAQBAJ&oi=fnd&pg=PR8&dq=ggplot2&ots=so_5bO526U&sig=IGjCMZpZsa-7gLeFD_igZRi3gJU&redir_esc=y#v=onepage&q=ggplot2&f=false
+
+Beeley, C. (2016). Web Appliocation Development with R using Shiny, 2.edition. Packt Publishing
+URL:https://books.google.no/books?hl=en&lr=&id=FW0dDAAAQBAJ&oi=fnd&pg=PP1&dq=shiny+create+dashboard+r&ots=kE6he7qqAV&sig=JS2heDVo9FmEd71rXxAJctOSbqc&redir_esc=y#v=onepage&q=shiny%20create%20dashboard%20r&f=false
+

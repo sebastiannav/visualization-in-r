@@ -1,6 +1,9 @@
 ---
 title: "Untitled"
-output: pdf_document
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -19,24 +22,26 @@ author:
   
   
 # 1. Introduction
-After working with R in a few courses, and having used base graphics and ggplot2, we wanted to explore the possibilities of interactive visualizations in the shiny package. This is something we think might be relevant later in our careers, as interactive visualizations can give a new dimensionality to reports. Rich reports with interactive visualizations gives the reader the option to dig deeper into the data if needed.
+After working with R in a few courses, and having used base graphics and ggplot2, we wanted to explore the possibilities of interactive visualizations in the shiny package. This is something we think might be relevant later in our careers, as interactive visualizations can give a new dimensionality to reports. Rich reports with interactive visualizations gives the reader the option to dig deeper into the data if needed. Also, interactive visualizations can be used to create dashboards.
 
+This paper explores how interactive visualizations can be used to create dashboards. Using the shiny package, two dashboards are created. The first dashboard shows how interactive visualizations can be used for exploratory data analysis, and the second shows how interactive visualizations can be used to present the results from a machine learning classification model.
 
-# 2. Shiny package
-How Shiny works.
-- Web -> javascript, html and css. Easily sharable.
-## 2.1 
+# 2. Dashboards
+A dashboard uses visualizations to tell a story, but only the most important elements of a story, since a dashboard is limited to a single computer screen. The dashboard may show the most important indicators of performance. For example it can show the present status of a company's key performance indicators and historical trends. It should be in real-time, so the consumers of the dashboard can interact with it by filtering. A dashboard should be easy to understand, and the displayed data should be automatically updated without any assistance from the user.
 
-## 2.1 Elements of a Shiny app
-Explain how a Shiny app is made, the elements needed, server/ui files, functions used.
+# 2. Packages
+
+## 2.1 Shiny
+Shiny is a web application framework for R that makes it possible to make interactive web applications. Javascript is used to make the app interactive, CSS is used to format the user interface, and the output is displayed using HTML. As a result, a Shiny app can be run in a web browser and thus easily sharable. Also, it could be embedded in R markdown documents or displayed in RStudio.
+
+There are two main components: a UI file (user-interface definition file) and a server script file. The UI file is the code used to set up everything the end user sees in the application like the title, sliders, plots and so on. This file is called ui.R. The second main component, the server script file, does the computational work. For example in our shiny model we use functions like plot(), smooth() and lm, etc. This is the instructions necessary to buid the app and the file is called server.R. Combined, ui.R and server.R can be called via a Shiny function and displayed in RStudio or a R Markdown document. Alternatively, they could be hosted on the Shiny server and accessed via the Internet.
 
 ## 2.2 ggplot2
 
-## 1.1 Research question
-How can interactive visualizations be used ...
+The ggplot2 package makes it possible to crate powerful and beautiful plots. It is based on grammar of graphics, which means it follows a set of rules as a graphic language and it lets you create graphs for different types of data: univariate and multivariate, numerical and categorical. Furthermore, the package provides functions that are easy to use: the grouping of the data (group by color, symbol, size, etc.) and the creation of plots. The package creates output layer by layer. This means it is easy to overlay different things on the same plot. When doing exploratory data analysis, one can quick and easy make changes in the visualization such as changing from a bar chart to a line chart. This makes ggplot2 suitable for exploratory data analysis.
 
 # 3. Housing prices dashboard
-To illustrate how interactive visualizations can fascilitate a deeper dive into the data, we have used the Ames Housing dataset downloaded from the American Statistical Association. The dataset includes data on properties sold in Ames, Iowa. The main plot of the dashboard is a plot of the sales price against the living area of the house. 
+To illustrate how interactive visualizations can be used for exploraty data analysis, we have used the Ames Housing dataset downloaded from the American Statistical Association. The dataset includes data on properties sold in Ames, Iowa. The main plot of the dashboard is a plot of the sales price against the living area of the house. 
 
 ```{r echo=TRUE, warning=FALSE}
 # Load ggplot2
@@ -51,14 +56,18 @@ ggplot(data = house, aes_string(x = house$GrLivArea, y = house$SalePrice)) +
   labs(x = "Living area (square feet)", y = "Sale Price ($)", col = "Neighborhoods")
 ```
 
-By looking at the graph, it is easy to see the positive relationship between sales price and the size of the house. However, it is very difficult separate the neighborhoods from each other. In general, this is a plot which tries to give too much information. With static visualizations, too much information in a plot can make it look cluttered, and it is difficult to communicate the data clearly. With interactive visualizations, however, we have more opportunities. The dashboard should be able to filter neighborhoods, and click and drag a selection of observations in the scatter plot to get the raw data. An analyst, real estate agent or housing prices enthusiast would like to have the opportunity to dig deeper into the data.
+By looking at the graph, it is easy to see the positive relationship between sales price and the size of the house. However, it is very difficult separate the neighborhoods from each other. In general, this is a plot which tries to give too much information. With static visualizations, too much information in a plot can make it look cluttered, and it is difficult to communicate the data clearly. With interactive visualizations, however, we have more opportunities. The dashboard should be able to filter neighborhoods, and click and drag a selection of observations in the scatter plot to get the raw data. An analyst, real estate agent or housing prices enthusiast would like to have the opportunity to dig deeper into the data. Also, box plots of the chosen neighborhoods should be displayed to give the user a quick overview of the data. For example, the most expensive house in the dataset seems to come from 
 
-```{r warning=FALSE, eval=FALSE}
-DT::renderDataTable({
-  brushedPoints(house, brush = input$plot_brush) %>% 
-    filter(!(Neighborhood %in% input$neighbourhoods)) %>%
-    select(SalePrice, Neighborhood, TotalSF, HouseAge, SaleCondition, GarageCars, GarageAge)
-})
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+library(dplyr)
+library(ggplot2)
+
+# Load data
+house <- read.csv('houseprices.csv')
+
+ggplot(data = house %>% filter(Neighborhood == "NoRidge")) +
+  geom_boxplot(aes_string(x = "Neighborhood", y = "SalePrice")) +
+  labs(x = "Neighborhood")
 ```
 
 Moreover, it should be possible to change variables on the x-axis, so the analyst can explore what other factors affects the sales price. The color of the points could also be used for other variables than neighborhoods, for example to separate new houses from old ones. and  behind the points. Finally, a slider for the regression line can help in the analysis of the relationship between the variables.
